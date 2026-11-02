@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: calling-agent-crm
+    env: node
+    plan: free
+    buildCommand: npm install
+    startCommand: node backend/server.js
+    envVars:
+      - key: VAPI_API_KEY
+        sync: false
+      - key: VAPI_ASSISTANT_ID
+        sync: false
+      - key: VAPI_PHONE_NUMBER_ID
+        sync: false
+      - key: PORT
+        value: 3000
