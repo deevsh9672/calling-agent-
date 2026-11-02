@@ -1,0 +1,19 @@
+{
+  "name": "vapi-hindi-appointment-agent",
+  "version": "1.0.0",
+  "description": "Multilingual Hindi+English AI Appointment Voice Receptionist for bhsoft.solutions",
+  "main": "backend/server.js",
+  "scripts": {
+    "start": "node backend/server.js",
+    "dev": "node --watch backend/server.js",
+    "test:tools": "node test/test-tools.js",
+    "sync:vapi": "node test/setup-vapi-assistant.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "googleapis": "^144.0.0",
+    "localtunnel": "^2.0.2"
+  }
+}

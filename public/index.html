@@ -1,0 +1,650 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BHSOFT.SOLUTIONS — AI Voice Calling CRM & Receptionist Dashboard</title>
+  <!-- Tailwind CSS & FontAwesome -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#eef2ff',
+              100: '#e0e7ff',
+              500: '#6366f1',
+              600: '#4f46e5',
+              700: '#4338ca',
+              900: '#1e1b4b'
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+    body { font-family: 'Inter', sans-serif; }
+    .glass { background: rgba(255, 255, 255, 0.85); backdrop-filter: blur(12px); }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col">
+
+  <!-- Top Navigation Bar -->
+  <header class="bg-white border-b border-slate-200 sticky top-0 z-30">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      <div class="flex items-center space-x-3">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-brand-600 to-indigo-500 flex items-center justify-center text-white shadow-md shadow-brand-500/20">
+          <i class="fa-solid fa-headset text-lg"></i>
+        </div>
+        <div>
+          <h1 class="font-bold text-lg text-slate-900 leading-tight">bhsoft.solutions</h1>
+          <p class="text-xs text-slate-500">AI Voice Calling CRM & Receptionist Desk</p>
+        </div>
+      </div>
+
+      <div class="flex items-center space-x-4">
+        <!-- Live Clock -->
+        <div class="hidden sm:flex items-center text-xs font-medium text-slate-500 bg-slate-100 py-1.5 px-3 rounded-lg border border-slate-200">
+          <i class="fa-regular fa-clock mr-2 text-brand-600"></i>
+          <span id="liveClock">Loading time...</span>
+        </div>
+
+        <!-- System Status Badge -->
+        <div class="flex items-center space-x-1.5 text-xs font-semibold px-2.5 py-1 bg-emerald-50 text-emerald-700 rounded-full border border-emerald-200">
+          <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+          <span>AI Engine Online</span>
+        </div>
+
+        <!-- Quick Call Trigger Button -->
+        <button onclick="openCallModal()" class="inline-flex items-center px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white text-xs font-semibold rounded-xl shadow-sm transition">
+          <i class="fa-solid fa-phone mr-2"></i> New Call
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Container -->
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex-1 w-full space-y-6">
+
+    <!-- KPI Metric Cards -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+      <!-- Card 1: Total Calls -->
+      <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between">
+        <div>
+          <p class="text-xs font-medium uppercase tracking-wider text-slate-500">Total Calls Handled</p>
+          <h3 id="statTotalCalls" class="text-2xl font-bold text-slate-900 mt-1">--</h3>
+          <p class="text-xs text-emerald-600 mt-1 flex items-center">
+            <i class="fa-solid fa-arrow-trend-up mr-1"></i> Live telecommunication
+          </p>
+        </div>
+        <div class="w-12 h-12 rounded-xl bg-indigo-50 text-brand-600 flex items-center justify-center text-xl">
+          <i class="fa-solid fa-phone-volume"></i>
+        </div>
+      </div>
+
+      <!-- Card 2: Talk Time -->
+      <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between">
+        <div>
+          <p class="text-xs font-medium uppercase tracking-wider text-slate-500">Total Talk Time</p>
+          <h3 id="statTotalMinutes" class="text-2xl font-bold text-slate-900 mt-1">-- min</h3>
+          <p class="text-xs text-slate-500 mt-1">Natural Hinglish & Hindi</p>
+        </div>
+        <div class="w-12 h-12 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center text-xl">
+          <i class="fa-solid fa-stopwatch"></i>
+        </div>
+      </div>
+
+      <!-- Card 3: Call Costs -->
+      <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between">
+        <div>
+          <p class="text-xs font-medium uppercase tracking-wider text-slate-500">Total Call Cost (INR)</p>
+          <h3 id="statTotalCostINR" class="text-2xl font-bold text-slate-900 mt-1">₹--</h3>
+          <p id="statTotalCostUSD" class="text-xs text-slate-400 mt-1">($-- USD)</p>
+        </div>
+        <div class="w-12 h-12 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center text-xl">
+          <i class="fa-solid fa-indian-rupee-sign"></i>
+        </div>
+      </div>
+
+      <!-- Card 4: Appointments Booked -->
+      <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between">
+        <div>
+          <p class="text-xs font-medium uppercase tracking-wider text-slate-500">Confirmed Appointments</p>
+          <h3 id="statAppointmentsCount" class="text-2xl font-bold text-slate-900 mt-1">--</h3>
+          <p class="text-xs text-brand-600 mt-1">Google Calendar Synced</p>
+        </div>
+        <div class="w-12 h-12 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center text-xl">
+          <i class="fa-regular fa-calendar-check"></i>
+        </div>
+      </div>
+    </div>
+
+    <!-- Navigation Tabs -->
+    <div class="border-b border-slate-200 flex space-x-6 text-sm font-medium">
+      <button onclick="switchTab('calls')" id="tabBtnCalls" class="pb-3 border-b-2 border-brand-600 text-brand-600 font-semibold flex items-center transition">
+        <i class="fa-solid fa-list-check mr-2"></i> Call History & Recordings
+      </button>
+      <button onclick="switchTab('appointments')" id="tabBtnAppointments" class="pb-3 border-b-2 border-transparent text-slate-500 hover:text-slate-800 flex items-center transition">
+        <i class="fa-regular fa-calendar-days mr-2"></i> Booked Appointments
+      </button>
+      <button onclick="switchTab('customers')" id="tabBtnCustomers" class="pb-3 border-b-2 border-transparent text-slate-500 hover:text-slate-800 flex items-center transition">
+        <i class="fa-solid fa-users mr-2"></i> Customer Directory
+      </button>
+      <button onclick="switchTab('tester')" id="tabBtnTester" class="pb-3 border-b-2 border-transparent text-slate-500 hover:text-slate-800 flex items-center transition">
+        <i class="fa-solid fa-microphone-lines mr-2"></i> In-Browser Web Voice Simulator
+      </button>
+    </div>
+
+    <!-- TAB 1: Call History & Audio Recordings -->
+    <section id="tabContentCalls" class="space-y-4">
+      <div class="flex flex-col sm:flex-row items-center justify-between gap-4">
+        <div class="relative w-full sm:w-80">
+          <i class="fa-solid fa-magnifying-glass absolute left-3 top-3 text-slate-400 text-xs"></i>
+          <input type="text" id="callSearchInput" oninput="filterCalls()" placeholder="Search by number or name..." class="w-full pl-9 pr-4 py-2 border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-brand-500 focus:outline-none">
+        </div>
+        <div class="flex items-center space-x-2">
+          <button onclick="fetchCallsData()" class="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold rounded-xl transition">
+            <i class="fa-solid fa-rotate mr-1"></i> Refresh Logs
+          </button>
+        </div>
+      </div>
+
+      <!-- Calls Table -->
+      <div class="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
+        <div class="overflow-x-auto">
+          <table class="w-full text-left border-collapse text-xs">
+            <thead>
+              <tr class="bg-slate-50 border-b border-slate-200 text-slate-500 font-semibold uppercase tracking-wider">
+                <th class="py-3 px-4">Customer / Number</th>
+                <th class="py-3 px-4">Direction & Time</th>
+                <th class="py-3 px-4">Duration</th>
+                <th class="py-3 px-4">Cost (INR)</th>
+                <th class="py-3 px-4">Audio Recording</th>
+                <th class="py-3 px-4 text-center">Transcript</th>
+                <th class="py-3 px-4 text-center">Action</th>
+              </tr>
+            </thead>
+            <tbody id="callsTableBody" class="divide-y divide-slate-100">
+              <tr>
+                <td colspan="7" class="py-8 text-center text-slate-400">Loading call recordings and transcripts...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 2: Booked Appointments -->
+    <section id="tabContentAppointments" class="space-y-4 hidden">
+      <div class="flex items-center justify-between">
+        <h3 class="font-bold text-base text-slate-900">Google Calendar Synced Bookings</h3>
+        <button onclick="openManualBookingModal()" class="px-3 py-2 bg-brand-600 hover:bg-brand-700 text-white text-xs font-semibold rounded-xl transition">
+          <i class="fa-solid fa-plus mr-1"></i> Book New Slot
+        </button>
+      </div>
+
+      <div class="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
+        <div class="overflow-x-auto">
+          <table class="w-full text-left border-collapse text-xs">
+            <thead>
+              <tr class="bg-slate-50 border-b border-slate-200 text-slate-500 font-semibold uppercase tracking-wider">
+                <th class="py-3 px-4">Booking ID</th>
+                <th class="py-3 px-4">Customer Name</th>
+                <th class="py-3 px-4">Phone Number</th>
+                <th class="py-3 px-4">Date & Time</th>
+                <th class="py-3 px-4">Purpose / Service</th>
+                <th class="py-3 px-4">Status</th>
+                <th class="py-3 px-4 text-center">Action</th>
+              </tr>
+            </thead>
+            <tbody id="appointmentsTableBody" class="divide-y divide-slate-100">
+              <tr>
+                <td colspan="7" class="py-8 text-center text-slate-400">Loading appointments...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 3: Customer Directory -->
+    <section id="tabContentCustomers" class="space-y-4 hidden">
+      <div class="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
+        <div class="overflow-x-auto">
+          <table class="w-full text-left border-collapse text-xs">
+            <thead>
+              <tr class="bg-slate-50 border-b border-slate-200 text-slate-500 font-semibold uppercase tracking-wider">
+                <th class="py-3 px-4">Customer Name</th>
+                <th class="py-3 px-4">Mobile Number</th>
+                <th class="py-3 px-4">Preferred Language</th>
+                <th class="py-3 px-4">Total Calls</th>
+                <th class="py-3 px-4">Last Contacted</th>
+                <th class="py-3 px-4 text-center">Quick Action</th>
+              </tr>
+            </thead>
+            <tbody id="customersTableBody" class="divide-y divide-slate-100">
+              <tr>
+                <td colspan="6" class="py-8 text-center text-slate-400">Loading customer profiles...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 4: In-Browser Web Voice Simulator -->
+    <section id="tabContentTester" class="space-y-4 hidden">
+      <div class="bg-white border border-slate-200 rounded-2xl shadow-sm p-8 text-center max-w-2xl mx-auto space-y-4">
+        <div class="w-16 h-16 rounded-full bg-brand-50 text-brand-600 flex items-center justify-center mx-auto text-2xl">
+          <i class="fa-solid fa-microphone"></i>
+        </div>
+        <h3 class="font-bold text-lg text-slate-900">Direct In-Browser Voice Testing (Zero Telecom Latency)</h3>
+        <p class="text-xs text-slate-500 max-w-md mx-auto">
+          Test the assistant directly through your browser's microphone with 100% natural Hinglish, calendar slot availability check, and zero carrier charges.
+        </p>
+        <div>
+          <a href="https://dashboard.vapi.ai/assistants/884f40bc-cab3-4014-af2a-1470927a248e" target="_blank" class="inline-flex items-center px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-sm rounded-xl shadow-md transition">
+            <i class="fa-solid fa-play mr-2"></i> Launch Voice Simulator in Vapi
+          </a>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Transcript Modal -->
+  <div id="transcriptModal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-2xl w-full max-h-[85vh] flex flex-col shadow-2xl border border-slate-100 overflow-hidden">
+      <div class="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50">
+        <div>
+          <h4 class="font-bold text-sm text-slate-900" id="transcriptTitle">Call Transcript</h4>
+          <p class="text-xs text-slate-500" id="transcriptSubtitle">Dialogue breakdown</p>
+        </div>
+        <button onclick="closeTranscriptModal()" class="text-slate-400 hover:text-slate-700 text-lg p-1">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+      <div class="p-6 overflow-y-auto space-y-3 flex-1 text-xs" id="transcriptContent">
+        <!-- Messages will be injected here -->
+      </div>
+      <div class="p-3 bg-slate-50 border-t border-slate-100 flex justify-end">
+        <button onclick="closeTranscriptModal()" class="px-4 py-1.5 bg-slate-200 hover:bg-slate-300 text-slate-800 text-xs font-semibold rounded-lg">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Outbound Call Trigger Modal -->
+  <div id="callModal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-md w-full shadow-2xl border border-slate-100 overflow-hidden">
+      <div class="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50">
+        <div class="flex items-center space-x-2">
+          <i class="fa-solid fa-phone-arrow-up-right text-brand-600"></i>
+          <h4 class="font-bold text-sm text-slate-900">Initiate AI Voice Call</h4>
+        </div>
+        <button onclick="closeCallModal()" class="text-slate-400 hover:text-slate-700 text-lg p-1">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+      <form onsubmit="handleTriggerCall(event)" class="p-6 space-y-4 text-xs">
+        <div>
+          <label class="block font-medium text-slate-700 mb-1">Customer Name</label>
+          <input type="text" id="callCustomerName" required value="Devesh ji" class="w-full px-3 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-500 focus:outline-none">
+        </div>
+        <div>
+          <label class="block font-medium text-slate-700 mb-1">Destination Phone Number</label>
+          <input type="text" id="callCustomerPhone" required placeholder="+919672520211" value="+919672520211" class="w-full px-3 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-500 focus:outline-none">
+          <p class="text-[10px] text-slate-400 mt-1">Must include country code (+91 for India)</p>
+        </div>
+        <div>
+          <label class="block font-medium text-slate-700 mb-1">Pitch / Offer Template</label>
+          <select id="callOfferTemplate" class="w-full px-3 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-500 focus:outline-none">
+            <option value="website_9999">bhsoft.solutions ₹9,999 Website & Shop (3 Days Launch)</option>
+            <option value="general_appointment">General Appointment & Consultation Booking</option>
+          </select>
+        </div>
+        <div id="callStatusAlert" class="hidden p-3 rounded-xl text-xs"></div>
+        <div class="flex justify-end space-x-2 pt-2">
+          <button type="button" onclick="closeCallModal()" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl">Cancel</button>
+          <button type="submit" id="triggerCallBtn" class="px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white font-semibold rounded-xl flex items-center">
+            <i class="fa-solid fa-phone mr-1.5"></i> Dial Now
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <footer class="bg-white border-t border-slate-200 py-4 text-center text-xs text-slate-400">
+    bhsoft.solutions AI Receptionist System &copy; 2026. Connected to Vapi AI Engine & Google Calendar.
+  </footer>
+
+  <!-- Application Logic -->
+  <script>
+    let rawCalls = [];
+    let rawAppointments = [];
+
+    // Live Clock
+    function updateClock() {
+      const now = new Date();
+      const options = { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true };
+      document.getElementById('liveClock').innerText = now.toLocaleTimeString('en-IN', options) + ' IST';
+    }
+    setInterval(updateClock, 1000);
+    updateClock();
+
+    // Tab Navigation
+    function switchTab(tab) {
+      const tabs = ['calls', 'appointments', 'customers', 'tester'];
+      tabs.forEach(t => {
+        const content = document.getElementById('tabContent' + capitalize(t));
+        const btn = document.getElementById('tabBtn' + capitalize(t));
+        if (t === tab) {
+          content.classList.remove('hidden');
+          btn.className = "pb-3 border-b-2 border-brand-600 text-brand-600 font-semibold flex items-center transition";
+        } else {
+          content.classList.add('hidden');
+          btn.className = "pb-3 border-b-2 border-transparent text-slate-500 hover:text-slate-800 flex items-center transition";
+        }
+      });
+    }
+
+    function capitalize(s) {
+      return s.charAt(0).toUpperCase() + s.slice(1);
+    }
+
+    // Fetch All CRM Data
+    async function fetchCallsData() {
+      try {
+        const res = await fetch('/api/crm/calls');
+        rawCalls = await res.json();
+        renderCalls(rawCalls);
+        calculateStats(rawCalls, rawAppointments);
+        renderCustomers(rawCalls, rawAppointments);
+      } catch (err) {
+        console.error('Error fetching calls:', err);
+      }
+    }
+
+    async function fetchAppointmentsData() {
+      try {
+        const res = await fetch('/api/crm/appointments');
+        const data = await res.json();
+        rawAppointments = data.appointments || [];
+        renderAppointments(rawAppointments);
+        calculateStats(rawCalls, rawAppointments);
+      } catch (err) {
+        console.error('Error fetching appointments:', err);
+      }
+    }
+
+    // Render Calls Table
+    function renderCalls(calls) {
+      const tbody = document.getElementById('callsTableBody');
+      if (!calls || calls.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="7" class="py-8 text-center text-slate-400">No calls recorded yet.</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = calls.map(c => {
+        const durationSec = c.durationSeconds ? Math.round(c.durationSeconds) : (c.durationMinutes ? Math.round(c.durationMinutes * 60) : 0);
+        const durationDisplay = durationSec > 0 ? `${Math.floor(durationSec / 60)}m ${durationSec % 60}s` : 'Missed / Brief';
+        const costUSD = c.cost ? Number(c.cost).toFixed(3) : '0.000';
+        const costINR = c.cost ? (Number(c.cost) * 86).toFixed(2) : '0.00';
+        const formattedDate = new Date(c.createdAt || c.startedAt).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', dateStyle: 'short', timeStyle: 'short' });
+
+        const recordingHtml = c.recordingUrl
+          ? `<audio controls class="h-8 w-48 rounded shadow-sm" src="${c.recordingUrl}" preload="none"></audio>`
+          : `<span class="text-slate-400 italic text-[11px]"><i class="fa-solid fa-microphone-slash mr-1"></i> No audio</span>`;
+
+        const typeBadge = c.type === 'outboundPhoneCall'
+          ? `<span class="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-blue-50 text-blue-700 border border-blue-200"><i class="fa-solid fa-arrow-up-right-from-square mr-1"></i> Outbound</span>`
+          : `<span class="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200"><i class="fa-solid fa-arrow-down-left mr-1"></i> Inbound / Web</span>`;
+
+        return `
+          <tr class="hover:bg-slate-50 transition">
+            <td class="py-3 px-4">
+              <div class="font-semibold text-slate-900">${c.customerName || 'Customer'}</div>
+              <div class="text-[11px] text-slate-500 font-mono">${c.customerPhone || c.customer?.number || 'Web User'}</div>
+            </td>
+            <td class="py-3 px-4">
+              <div class="mb-1">${typeBadge}</div>
+              <div class="text-[11px] text-slate-400">${formattedDate}</div>
+            </td>
+            <td class="py-3 px-4 font-medium text-slate-700">${durationDisplay}</td>
+            <td class="py-3 px-4">
+              <span class="font-semibold text-emerald-700">₹${costINR}</span>
+              <span class="text-[10px] text-slate-400 block font-mono">($${costUSD})</span>
+            </td>
+            <td class="py-3 px-4">${recordingHtml}</td>
+            <td class="py-3 px-4 text-center">
+              <button onclick="viewTranscript('${c.id}')" class="px-2.5 py-1 bg-slate-100 hover:bg-brand-50 hover:text-brand-600 text-slate-600 font-medium rounded-lg text-xs transition">
+                <i class="fa-regular fa-message mr-1"></i> View (${c.messages?.length || 0})
+              </button>
+            </td>
+            <td class="py-3 px-4 text-center">
+              <button onclick="triggerQuickCall('${c.customerPhone || c.customer?.number}', '${c.customerName || 'Customer'}')" title="Call Back" class="w-7 h-7 rounded-lg bg-slate-100 hover:bg-brand-600 hover:text-white text-slate-600 transition inline-flex items-center justify-center">
+                <i class="fa-solid fa-phone text-xs"></i>
+              </button>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    // Render Appointments Table
+    function renderAppointments(appointments) {
+      const tbody = document.getElementById('appointmentsTableBody');
+      if (!appointments || appointments.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="7" class="py-8 text-center text-slate-400">No appointments scheduled yet.</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = appointments.map(a => {
+        const statusBadge = a.status === 'confirmed'
+          ? `<span class="px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200"><i class="fa-solid fa-check mr-1"></i> Confirmed</span>`
+          : `<span class="px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-rose-50 text-rose-700 border border-rose-200">Cancelled</span>`;
+
+        return `
+          <tr class="hover:bg-slate-50 transition">
+            <td class="py-3 px-4 font-mono font-bold text-brand-600">${a.bookingId || 'BH-TEST'}</td>
+            <td class="py-3 px-4 font-semibold text-slate-900">${a.customerName}</td>
+            <td class="py-3 px-4 font-mono text-slate-600">${a.customerPhone}</td>
+            <td class="py-3 px-4 font-medium text-slate-800">
+              <div><i class="fa-regular fa-calendar mr-1 text-slate-400"></i> ${a.date}</div>
+              <div class="text-[11px] text-slate-500"><i class="fa-regular fa-clock mr-1 text-slate-400"></i> ${a.time} IST</div>
+            </td>
+            <td class="py-3 px-4 text-slate-700">${a.purpose}</td>
+            <td class="py-3 px-4">${statusBadge}</td>
+            <td class="py-3 px-4 text-center">
+              <button onclick="cancelAppointment('${a.bookingId}')" class="px-2 py-1 text-rose-600 hover:bg-rose-50 rounded text-xs transition">
+                <i class="fa-solid fa-trash mr-1"></i> Cancel
+              </button>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    // Render Customers Directory
+    function renderCustomers(calls, appointments) {
+      const map = {};
+      calls.forEach(c => {
+        const phone = c.customerPhone || c.customer?.number;
+        if (!phone) return;
+        if (!map[phone]) {
+          map[phone] = {
+            name: c.customerName || c.customer?.name || 'Customer',
+            phone: phone,
+            callsCount: 0,
+            lastContacted: c.createdAt
+          };
+        }
+        map[phone].callsCount++;
+      });
+
+      const list = Object.values(map);
+      const tbody = document.getElementById('customersTableBody');
+      if (list.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="6" class="py-8 text-center text-slate-400">No customer records found.</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = list.map(c => `
+        <tr class="hover:bg-slate-50 transition">
+          <td class="py-3 px-4 font-semibold text-slate-900">${c.name}</td>
+          <td class="py-3 px-4 font-mono text-slate-600">${c.phone}</td>
+          <td class="py-3 px-4 text-slate-700">Hinglish / Hindi</td>
+          <td class="py-3 px-4 font-bold text-slate-800">${c.callsCount} call(s)</td>
+          <td class="py-3 px-4 text-slate-500">${new Date(c.lastContacted).toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata' })}</td>
+          <td class="py-3 px-4 text-center">
+            <button onclick="triggerQuickCall('${c.phone}', '${c.name}')" class="px-3 py-1 bg-brand-600 text-white rounded-lg hover:bg-brand-700 font-semibold text-xs">
+              <i class="fa-solid fa-phone mr-1"></i> Call
+            </button>
+          </td>
+        </tr>
+      `).join('');
+    }
+
+    // Calculate Overall KPI Stats
+    function calculateStats(calls, appointments) {
+      document.getElementById('statTotalCalls').innerText = calls.length;
+
+      let totalSec = 0;
+      let totalCostUSD = 0;
+
+      calls.forEach(c => {
+        totalSec += (c.durationSeconds || (c.durationMinutes ? c.durationMinutes * 60 : 0));
+        totalCostUSD += (c.cost || 0);
+      });
+
+      const totalMin = (totalSec / 60).toFixed(1);
+      const totalINR = (totalCostUSD * 86).toFixed(2);
+
+      document.getElementById('statTotalMinutes').innerText = `${totalMin} min`;
+      document.getElementById('statTotalCostINR').innerText = `₹${totalINR}`;
+      document.getElementById('statTotalCostUSD').innerText = `($${totalCostUSD.toFixed(3)} USD)`;
+      document.getElementById('statAppointmentsCount').innerText = appointments.length;
+    }
+
+    // View Transcript Modal
+    function viewTranscript(callId) {
+      const call = rawCalls.find(c => c.id === callId);
+      if (!call) return;
+
+      document.getElementById('transcriptTitle').innerText = `Call with ${call.customerName || 'Customer'} (${call.customerPhone || 'Unknown'})`;
+      document.getElementById('transcriptSubtitle').innerText = `${new Date(call.createdAt).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })} | Cost: ₹${((call.cost || 0) * 86).toFixed(2)}`;
+
+      const container = document.getElementById('transcriptContent');
+
+      if (!call.messages || call.messages.length === 0) {
+        if (call.transcript) {
+          container.innerHTML = `<div class="p-4 bg-slate-50 rounded-xl whitespace-pre-wrap">${call.transcript}</div>`;
+        } else {
+          container.innerHTML = `<p class="text-slate-400 italic">No transcript available for this call.</p>`;
+        }
+      } else {
+        container.innerHTML = call.messages
+          .filter(m => m.role === 'bot' || m.role === 'user' || m.role === 'assistant')
+          .map(m => {
+            const isBot = m.role === 'bot' || m.role === 'assistant';
+            const speaker = isBot ? 'AI Voice Agent (bhsoft)' : (call.customerName || 'Customer');
+            const bg = isBot ? 'bg-indigo-50 border-indigo-100 text-slate-800' : 'bg-emerald-50 border-emerald-100 text-slate-800';
+            const icon = isBot ? 'fa-headset text-brand-600' : 'fa-user text-emerald-600';
+
+            return `
+              <div class="p-3 rounded-xl border ${bg} space-y-1">
+                <div class="flex items-center space-x-1.5 font-bold text-[11px] text-slate-600">
+                  <i class="fa-solid ${icon}"></i>
+                  <span>${speaker}</span>
+                </div>
+                <p class="leading-relaxed text-slate-900">${m.message || m.content}</p>
+              </div>
+            `;
+          }).join('');
+      }
+
+      document.getElementById('transcriptModal').classList.remove('hidden');
+    }
+
+    function closeTranscriptModal() {
+      document.getElementById('transcriptModal').classList.add('hidden');
+    }
+
+    // Outbound Call Modal
+    function openCallModal() {
+      document.getElementById('callModal').classList.remove('hidden');
+    }
+
+    function closeCallModal() {
+      document.getElementById('callModal').classList.add('hidden');
+      document.getElementById('callStatusAlert').classList.add('hidden');
+    }
+
+    function triggerQuickCall(phone, name) {
+      document.getElementById('callCustomerPhone').value = phone;
+      document.getElementById('callCustomerName').value = name || 'Devesh ji';
+      openCallModal();
+    }
+
+    async function handleTriggerCall(e) {
+      e.preventDefault();
+      const phone = document.getElementById('callCustomerPhone').value.trim();
+      const name = document.getElementById('callCustomerName').value.trim();
+      const btn = document.getElementById('triggerCallBtn');
+      const alert = document.getElementById('callStatusAlert');
+
+      btn.disabled = true;
+      btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin mr-1.5"></i> Dialing...`;
+
+      try {
+        const res = await fetch('/api/crm/call', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ phone, name })
+        });
+        const data = await res.json();
+
+        alert.classList.remove('hidden');
+        if (data.success) {
+          alert.className = "p-3 rounded-xl text-xs bg-emerald-50 text-emerald-800 border border-emerald-200";
+          alert.innerHTML = `<strong>Call Initiated!</strong> Ringing ${phone}... (Call ID: ${data.callId})`;
+          setTimeout(() => {
+            closeCallModal();
+            fetchCallsData();
+          }, 3000);
+        } else {
+          alert.className = "p-3 rounded-xl text-xs bg-rose-50 text-rose-800 border border-rose-200";
+          alert.innerHTML = `<strong>Error:</strong> ${data.error || 'Failed to place call'}`;
+        }
+      } catch (err) {
+        alert.classList.remove('hidden');
+        alert.className = "p-3 rounded-xl text-xs bg-rose-50 text-rose-800 border border-rose-200";
+        alert.innerHTML = `<strong>Network Error:</strong> ${err.message}`;
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = `<i class="fa-solid fa-phone mr-1.5"></i> Dial Now`;
+      }
+    }
+
+    // Filter calls in table
+    function filterCalls() {
+      const q = document.getElementById('callSearchInput').value.toLowerCase();
+      const filtered = rawCalls.filter(c => {
+        const name = (c.customerName || '').toLowerCase();
+        const phone = (c.customerPhone || c.customer?.number || '').toLowerCase();
+        return name.includes(q) || phone.includes(q);
+      });
+      renderCalls(filtered);
+    }
+
+    // Initial Load
+    fetchCallsData();
+    fetchAppointmentsData();
+  </script>
+</body>
+</html>
