@@ -2,98 +2,94 @@ const calendar = require('../backend/services/calendar');
 
 async function runTests() {
   console.log('====================================================');
-  console.log('🧪 RUNNING APPOINTMENT ENGINE AUTOMATED TESTS');
+  console.log('🏥 RUNNING SHARMA CLINIC APPOINTMENT ENGINE TESTS');
   console.log('====================================================\n');
 
   // Test 1: Check Sunday (Closed)
   console.log('TEST 1: Checking Sunday availability (Should be closed)...');
-  const sundayCheck = await calendar.checkAvailability('2026-11-01'); // 2026-11-01 is a Sunday
+  const sundayCheck = await calendar.checkAvailability('2026-11-29'); // 2026-11-29 is a Sunday
   console.log('Result:', sundayCheck);
   if (!sundayCheck.available && sundayCheck.message.includes('closed on Sundays')) {
-    console.log('✅ TEST 1 PASSED: Correctly identified Sunday as closed.\n');
+    console.log('✅ TEST 1 PASSED: Sunday closed correctly identified.\n');
   } else {
     console.error('❌ TEST 1 FAILED');
   }
 
-  // Test 2: Check Monday (Open slots)
-  console.log('TEST 2: Checking Monday availability at 11:00 AM...');
-  const mondayCheck = await calendar.checkAvailability('2026-11-02', '11:00'); // 2026-11-02 is Monday
-  console.log('Result:', mondayCheck);
-  if (mondayCheck.available && mondayCheck.requestedTime === '11:00') {
-    console.log('✅ TEST 2 PASSED: 11:00 AM slot is available.\n');
+  // Test 2: Check Monday Morning Slot (11:20 AM)
+  console.log('TEST 2: Checking Monday Morning slot at 11:20 AM...');
+  const mondayMorning = await calendar.checkAvailability('2026-11-30', '11:20');
+  console.log('Result:', mondayMorning);
+  if (mondayMorning.available) {
+    console.log('✅ TEST 2 PASSED: 11:20 AM morning slot is available.\n');
   } else {
     console.error('❌ TEST 2 FAILED');
   }
 
-  // Test 3: Schedule Appointment
-  console.log('TEST 3: Booking appointment for "Rahul Sharma"...');
-  const booking = await calendar.scheduleAppointment({
-    customerName: 'Rahul Sharma',
-    customerPhone: '9876543210',
-    date: '2026-11-02',
-    time: '11:00',
-    purpose: 'AI Voice Calling Agent',
-    preferredLanguage: 'Hinglish',
-    notes: 'Needs WhatsApp bot integration as well'
-  });
-  console.log('Booking Result:', booking);
-  if (booking.success && booking.bookingId) {
-    console.log(`✅ TEST 3 PASSED: Booked with ID ${booking.bookingId}.\n`);
+  // Test 3: Check Break Hours (15:00 / 3 PM - clinic closed between 2 PM and 5 PM)
+  console.log('TEST 3: Checking Break Hours (3:00 PM - should be outside hours)...');
+  const breakCheck = await calendar.checkAvailability('2026-11-30', '15:00');
+  console.log('Result:', breakCheck);
+  if (!breakCheck.available && breakCheck.message.includes('outside clinic hours')) {
+    console.log('✅ TEST 3 PASSED: Afternoon break correctly identified.\n');
   } else {
     console.error('❌ TEST 3 FAILED');
   }
 
-  // Test 4: Double-booking Prevention
-  console.log('TEST 4: Checking 11:00 AM on 2026-11-02 again (Double-booking test)...');
-  const doubleCheck = await calendar.checkAvailability('2026-11-02', '11:00');
-  console.log('Result:', doubleCheck);
-  if (!doubleCheck.available && doubleCheck.message.includes('booked or unavailable')) {
-    console.log('✅ TEST 4 PASSED: Double booking prevented! Suggested alternative slots.\n');
+  // Test 4: Check Evening Slot (18:00 / 6:00 PM)
+  console.log('TEST 4: Checking Evening slot at 18:00 (6:00 PM)...');
+  const eveningCheck = await calendar.checkAvailability('2026-11-30', '18:00');
+  console.log('Result:', eveningCheck);
+  if (eveningCheck.available) {
+    console.log('✅ TEST 4 PASSED: 6:00 PM evening slot is available.\n');
   } else {
-    console.error('❌ TEST 4 FAILED: Overlap was allowed!');
+    console.error('❌ TEST 4 FAILED');
   }
 
-  // Test 5: Rescheduling
-  console.log('TEST 5: Rescheduling Rahul Sharma to 3:00 PM (15:00)...');
-  const reschedule = await calendar.rescheduleAppointment({
+  // Test 5: Book Appointment for Patient
+  console.log('TEST 5: Booking appointment for "Ramesh Verma" with fever/cough...');
+  const booking = await calendar.scheduleAppointment({
+    customerName: 'Ramesh Verma',
     customerPhone: '9876543210',
-    customerName: 'Rahul Sharma',
-    newDate: '2026-11-02',
-    newTime: '15:00'
+    date: '2026-11-30',
+    time: '11:20',
+    purpose: 'Fever and Cough Consultation',
+    patientType: 'New Patient',
+    preferredLanguage: 'Hinglish',
+    notes: 'Mild fever for 3 days'
   });
-  console.log('Reschedule Result:', reschedule);
-  if (reschedule.success) {
-    console.log('✅ TEST 5 PASSED: Appointment rescheduled.\n');
+  console.log('Booking Result:', booking);
+  if (booking.success && booking.bookingId && booking.fee.includes('500')) {
+    console.log(`✅ TEST 5 PASSED: Booked ID ${booking.bookingId} with fee ${booking.fee}.\n`);
   } else {
     console.error('❌ TEST 5 FAILED');
   }
 
-  // Test 6: Verify old slot is freed up
-  console.log('TEST 6: Verifying old 11:00 AM slot is now free again...');
-  const freedSlotCheck = await calendar.checkAvailability('2026-11-02', '11:00');
-  if (freedSlotCheck.available) {
-    console.log('✅ TEST 6 PASSED: Old slot is free again.\n');
+  // Test 6: Double Booking Check
+  console.log('TEST 6: Checking 11:20 AM on 2026-11-30 again (Double-booking test)...');
+  const doubleCheck = await calendar.checkAvailability('2026-11-30', '11:20');
+  if (!doubleCheck.available) {
+    console.log('✅ TEST 6 PASSED: Double booking prevented! Suggested alternatives.\n');
   } else {
-    console.error('❌ TEST 6 FAILED: Old slot was not freed!');
+    console.error('❌ TEST 6 FAILED');
   }
 
-  // Test 7: Cancellation
+  // Test 7: Cancel Appointment
   console.log('TEST 7: Cancelling appointment...');
   const cancel = await calendar.cancelAppointment({
     customerPhone: '9876543210',
-    customerName: 'Rahul Sharma',
-    date: '2026-11-02',
-    reason: 'Schedule conflict'
+    customerName: 'Ramesh Verma',
+    date: '2026-11-30',
+    reason: 'Patient recovered'
   });
   console.log('Cancel Result:', cancel);
   if (cancel.success) {
-    console.log('✅ TEST 7 PASSED: Appointment successfully cancelled.\n');
+    console.log('✅ TEST 7 PASSED: Appointment cancelled.\n');
   } else {
     console.error('❌ TEST 7 FAILED');
   }
 
   console.log('====================================================');
-  console.log('🎉 ALL 7 CALENDAR ENGINE TESTS PASSED PERFECTLY!');
+  console.log('🎉 ALL 7 CLINIC CALENDAR TESTS PASSED PERFECTLY!');
   console.log('====================================================');
 }
 

@@ -4,9 +4,12 @@ const { google } = require('googleapis');
 
 // Timezone: Asia/Kolkata
 const TIMEZONE = 'Asia/Kolkata';
-const BUSINESS_START_HOUR = 10; // 10:00 AM IST
-const BUSINESS_END_HOUR = 19;   // 7:00 PM IST
-const SLOT_DURATION_MINUTES = 30;
+
+// Clinic Timings:
+// Morning: 10:00 AM - 2:00 PM (10:00 to 14:00)
+// Evening: 5:00 PM - 8:00 PM (17:00 to 20:00)
+// Sunday: Closed
+const SLOT_DURATION_MINUTES = 20;
 
 // Local fallback store file for seamless zero-config testing
 const LOCAL_STORE_FILE = path.join(__dirname, '../../appointments-store.json');
@@ -50,18 +53,25 @@ function getGoogleCalendarClient() {
 }
 
 /**
- * Generate standard 30-min slots for a given day (10:00 AM to 7:00 PM)
+ * Generate standard 20-min slots for Sharma Multispeciality Clinic:
+ * Morning: 10:00 AM - 02:00 PM (10:00 to 14:00)
+ * Evening: 05:00 PM - 08:00 PM (17:00 to 20:00)
  */
 function getStandardDailySlots(dateStr) {
-  const slots = [];
-  for (let hour = BUSINESS_START_HOUR; hour < BUSINESS_END_HOUR; hour++) {
-    for (let min of [0, 30]) {
-      const hStr = hour.toString().padStart(2, '0');
-      const mStr = min.toString().padStart(2, '0');
-      slots.push(`${hStr}:${mStr}`);
-    }
-  }
-  return slots;
+  const morningShifts = [
+    '10:00', '10:20', '10:40',
+    '11:00', '11:20', '11:40',
+    '12:00', '12:20', '12:40',
+    '13:00', '13:20', '13:40'
+  ];
+
+  const eveningShifts = [
+    '17:00', '17:20', '17:40',
+    '18:00', '18:20', '18:40',
+    '19:00', '19:20', '19:40'
+  ];
+
+  return [...morningShifts, ...eveningShifts];
 }
 
 /**
@@ -74,7 +84,7 @@ async function checkAvailability(dateStr, preferredTime = null) {
   if (dayOfWeek === 0) {
     return {
       available: false,
-      message: 'bhsoft.solutions is closed on Sundays. Please choose Monday through Saturday between 10:00 AM and 7:00 PM IST.',
+      message: 'Sharma Multispeciality Clinic is closed on Sundays. Clinic timings are Monday to Saturday: Morning 10:00 AM to 2:00 PM, and Evening 5:00 PM to 8:00 PM IST.',
       availableSlots: []
     };
   }
@@ -84,8 +94,8 @@ async function checkAvailability(dateStr, preferredTime = null) {
 
   if (gcal) {
     try {
-      const timeMin = new Date(`${dateStr}T${BUSINESS_START_HOUR.toString().padStart(2, '0')}:00:00+05:30`).toISOString();
-      const timeMax = new Date(`${dateStr}T${BUSINESS_END_HOUR.toString().padStart(2, '0')}:00:00+05:30`).toISOString();
+      const timeMin = new Date(`${dateStr}T10:00:00+05:30`).toISOString();
+      const timeMax = new Date(`${dateStr}T20:00:00+05:30`).toISOString();
 
       const response = await gcal.client.freebusy.query({
         requestBody: {
@@ -128,7 +138,6 @@ async function checkAvailability(dateStr, preferredTime = null) {
   }
 
   if (preferredTime) {
-    // Normalize format like "3:00 PM" or "15:00"
     let normTime = preferredTime.trim();
     if (normTime.length === 4 && normTime[1] === ':') normTime = '0' + normTime;
 
@@ -138,7 +147,7 @@ async function checkAvailability(dateStr, preferredTime = null) {
         available: true,
         date: dateStr,
         requestedTime: normTime,
-        message: `The slot at ${normTime} on ${dateStr} is available.`,
+        message: `The slot at ${normTime} on ${dateStr} with Dr. Pankaj Sharma is available.`,
         availableSlots: freeSlots.slice(0, 4)
       };
     } else {
@@ -146,7 +155,7 @@ async function checkAvailability(dateStr, preferredTime = null) {
         available: false,
         date: dateStr,
         requestedTime: normTime,
-        message: `The slot at ${normTime} is currently booked or unavailable. Alternative available slots on ${dateStr}: ${freeSlots.slice(0, 3).join(', ')}.`,
+        message: `The requested slot at ${normTime} is currently booked or outside clinic hours (Morning 10 AM-2 PM, Evening 5 PM-8 PM). Alternative available slots on ${dateStr}: ${freeSlots.slice(0, 3).join(', ')}.`,
         availableSlots: freeSlots.slice(0, 4)
       };
     }
@@ -155,7 +164,7 @@ async function checkAvailability(dateStr, preferredTime = null) {
   return {
     available: freeSlots.length > 0,
     date: dateStr,
-    message: `Available slots for ${dateStr} are: ${freeSlots.slice(0, 4).join(', ')}.`,
+    message: `Available appointment slots for Dr. Pankaj Sharma on ${dateStr} are: ${freeSlots.slice(0, 4).join(', ')}.`,
     availableSlots: freeSlots.slice(0, 5)
   };
 }
@@ -163,12 +172,11 @@ async function checkAvailability(dateStr, preferredTime = null) {
 /**
  * Schedule Appointment in Google Calendar and Local Store
  */
-async function scheduleAppointment({ customerName, customerPhone, date, time, purpose, preferredLanguage, notes }) {
-  const bookingId = 'BH-' + Date.now().toString(36).toUpperCase();
+async function scheduleAppointment({ customerName, customerPhone, date, time, purpose, preferredLanguage, notes, patientType }) {
+  const bookingId = 'SMC-' + Date.now().toString(36).toUpperCase();
   const startDateTime = `${date}T${time}:00+05:30`;
   const startTime = new Date(startDateTime);
   const endTime = new Date(startTime.getTime() + SLOT_DURATION_MINUTES * 60000);
-  const endDateTime = endTime.toISOString();
 
   let gcalEventId = null;
   const gcal = getGoogleCalendarClient();
@@ -178,8 +186,8 @@ async function scheduleAppointment({ customerName, customerPhone, date, time, pu
       const eventRes = await gcal.client.events.insert({
         calendarId: gcal.calendarId,
         requestBody: {
-          summary: `Consultation: ${customerName} (${purpose})`,
-          description: `Customer Name: ${customerName}\nPhone: ${customerPhone}\nService: ${purpose}\nLanguage: ${preferredLanguage || 'Hinglish'}\nNotes: ${notes || 'None'}\nBooking ID: ${bookingId}`,
+          summary: `Dr. Pankaj Sharma - Patient: ${customerName} (${purpose || 'General Consultation'})`,
+          description: `Patient Name: ${customerName}\nPhone: ${customerPhone}\nConcern: ${purpose || 'Health Consultation'}\nType: ${patientType || 'New Patient'}\nFee: ₹500 (Free follow-up within 7 days)\nNotes: ${notes || 'None'}\nBooking ID: ${bookingId}`,
           start: { dateTime: startTime.toISOString(), timeZone: TIMEZONE },
           end: { dateTime: endTime.toISOString(), timeZone: TIMEZONE }
         }
@@ -198,11 +206,15 @@ async function scheduleAppointment({ customerName, customerPhone, date, time, pu
     customerPhone,
     date,
     time,
-    purpose,
+    purpose: purpose || 'General Consultation',
+    patientType: patientType || 'New Patient',
+    fee: '₹500',
     preferredLanguage: preferredLanguage || 'Hinglish',
     notes: notes || '',
     calendarEventId: gcalEventId,
     status: 'confirmed',
+    clinicName: 'Sharma Multispeciality Clinic',
+    doctor: 'Dr. Pankaj Sharma (MD General Medicine)',
     createdAt: new Date().toISOString()
   };
   store.appointments.push(newAppointment);
@@ -215,8 +227,10 @@ async function scheduleAppointment({ customerName, customerPhone, date, time, pu
     customerPhone,
     date,
     time,
-    purpose,
-    message: `Appointment successfully booked for ${customerName} on ${date} at ${time} for ${purpose}. Booking ID: ${bookingId}.`
+    purpose: purpose || 'General Consultation',
+    doctor: 'Dr. Pankaj Sharma',
+    fee: '₹500 (Consultation fee, Pay at clinic via UPI/Cash/Card)',
+    message: `Appointment successfully booked for ${customerName} with Dr. Pankaj Sharma on ${date} at ${time}. Booking ID: ${bookingId}. Consultation fee is ₹500 (Free follow-up within 7 days).`
   };
 }
 
@@ -233,11 +247,10 @@ async function rescheduleAppointment({ customerPhone, newDate, newTime, customer
   if (!app) {
     return {
       success: false,
-      message: `No active appointment found for phone number ${customerPhone}. Please verify your details.`
+      message: `No active appointment found for phone number ${customerPhone} at Sharma Multispeciality Clinic. Please verify your details.`
     };
   }
 
-  // Check availability of new slot
   const check = await checkAvailability(newDate, newTime);
   if (!check.available) {
     return {
@@ -253,7 +266,6 @@ async function rescheduleAppointment({ customerPhone, newDate, newTime, customer
   app.updatedAt = new Date().toISOString();
   saveLocalStore(store);
 
-  // Update Google Calendar if linked
   const gcal = getGoogleCalendarClient();
   if (gcal && app.calendarEventId) {
     try {
@@ -277,7 +289,7 @@ async function rescheduleAppointment({ customerPhone, newDate, newTime, customer
     bookingId: app.bookingId,
     date: newDate,
     time: newTime,
-    message: `Appointment successfully rescheduled to ${newDate} at ${newTime}.`
+    message: `Appointment successfully rescheduled with Dr. Pankaj Sharma to ${newDate} at ${newTime}.`
   };
 }
 
@@ -300,11 +312,10 @@ async function cancelAppointment({ customerPhone, customerName, date, reason }) 
   }
 
   app.status = 'cancelled';
-  app.cancellationReason = reason || 'Customer requested';
+  app.cancellationReason = reason || 'Patient requested';
   app.cancelledAt = new Date().toISOString();
   saveLocalStore(store);
 
-  // Delete/Cancel from Google Calendar if linked
   const gcal = getGoogleCalendarClient();
   if (gcal && app.calendarEventId) {
     try {
@@ -320,7 +331,7 @@ async function cancelAppointment({ customerPhone, customerName, date, reason }) 
   return {
     success: true,
     bookingId: app.bookingId,
-    message: `Your appointment on ${app.date} at ${app.time} has been successfully cancelled.`
+    message: `Your appointment with Dr. Pankaj Sharma on ${app.date} at ${app.time} has been successfully cancelled.`
   };
 }
 

@@ -162,8 +162,10 @@ app.get('/crm', (req, res) => {
 app.get('/api/health', (req, res) => {
   res.json({
     status: 'online',
-    service: 'bhsoft.solutions AI Appointment Webhook Server',
-    agent: 'Hindi English Appointment Booking Agent',
+    service: 'Sharma Multispeciality Clinic AI Webhook Server',
+    clinic: 'Sharma Multispeciality Clinic, Pratap Nagar, Jaipur',
+    doctor: 'Dr. Pankaj Sharma (MD General Medicine)',
+    receptionist: 'Riya',
     timezone: 'Asia/Kolkata',
     currentTime: new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }),
     appointmentsCount: calendar.loadLocalStore().appointments.length
