@@ -75,15 +75,108 @@ function getStandardDailySlots(dateStr) {
 }
 
 /**
+ * Normalize Date strings dynamically (handles "today", "tomorrow", "monday", 2024->2026 fixes, etc.)
+ */
+function normalizeDate(rawDate) {
+  const now = new Date();
+  const kolkataDateStr = now.toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' }); // YYYY-MM-DD
+  const baseDate = new Date(kolkataDateStr + 'T00:00:00+05:30');
+
+  if (!rawDate) return kolkataDateStr;
+  let str = rawDate.toString().trim().toLowerCase();
+
+  const dayOfWeek = baseDate.getDay(); // 0 is Sunday, 1 is Monday...
+
+  if (str === 'today' || str === 'aaj') return kolkataDateStr;
+  if (str === 'tomorrow' || str === 'kal') {
+    const tm = new Date(baseDate.getTime() + 24 * 60 * 60 * 1000);
+    return tm.toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
+  }
+
+  const daysMap = {
+    'sunday': 0, 'raviwar': 0,
+    'monday': 1, 'somwar': 1, 'somvaar': 1,
+    'tuesday': 2, 'mangalwar': 2, 'mangalvaar': 2,
+    'wednesday': 3, 'budhwar': 3, 'budhvaar': 3,
+    'thursday': 4, 'guruwar': 4, 'veervaar': 4,
+    'friday': 5, 'shukrawar': 5, 'shukrvaar': 5,
+    'saturday': 6, 'shaniwar': 6, 'shanivaar': 6
+  };
+
+  for (const [dayName, targetDay] of Object.entries(daysMap)) {
+    if (str.includes(dayName)) {
+      let diff = targetDay - dayOfWeek;
+      if (diff < 0) diff += 7; // Next occurrence
+      if (diff === 0 && (str.includes('next') || str.includes('agle'))) diff = 7;
+      const target = new Date(baseDate.getTime() + diff * 24 * 60 * 60 * 1000);
+      return target.toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
+    }
+  }
+
+  // Fix 2024 or 2025 hallucinated years to 2026
+  const parts = str.split('-');
+  if (parts.length === 3) {
+    let y = parseInt(parts[0], 10);
+    let m = parts[1].padStart(2, '0');
+    let d = parts[2].padStart(2, '0');
+    if (y < 2026) y = 2026;
+    return `${y}-${m}-${d}`;
+  }
+
+  return str;
+}
+
+/**
+ * Normalize Time strings (handles "11 AM", "11", "5 PM", "17:00", etc.)
+ */
+function normalizeTime(rawTime) {
+  if (!rawTime) return null;
+  let str = rawTime.toString().trim().toLowerCase();
+
+  if (str.includes('pm') || str.includes('sham') || str.includes('shaam')) {
+    const num = parseInt(str.replace(/[^0-9]/g, ''), 10);
+    if (num < 12) {
+      return `${(num + 12).toString().padStart(2, '0')}:00`;
+    }
+  }
+  if (str.includes('am') || str.includes('subah')) {
+    const num = parseInt(str.replace(/[^0-9]/g, ''), 10);
+    return `${num.toString().padStart(2, '0')}:00`;
+  }
+
+  const timeMatch = str.match(/(\d{1,2}):(\d{2})/);
+  if (timeMatch) {
+    return `${timeMatch[1].padStart(2, '0')}:${timeMatch[2]}`;
+  }
+
+  const digitOnly = parseInt(str.replace(/[^0-9]/g, ''), 10);
+  if (!isNaN(digitOnly) && digitOnly >= 1 && digitOnly <= 24) {
+    if (digitOnly >= 1 && digitOnly <= 4) {
+      return `${(digitOnly + 12).toString().padStart(2, '0')}:00`;
+    }
+    if (digitOnly >= 5 && digitOnly <= 8) {
+      return `${(digitOnly + 12).toString().padStart(2, '0')}:00`;
+    }
+    return `${digitOnly.toString().padStart(2, '0')}:00`;
+  }
+
+  return rawTime;
+}
+
+/**
  * Check Availability for a date and optional preferred time
  */
-async function checkAvailability(dateStr, preferredTime = null) {
+async function checkAvailability(rawDateStr, rawPreferredTime = null) {
+  const dateStr = normalizeDate(rawDateStr);
+  const preferredTime = normalizeTime(rawPreferredTime);
+
   const targetDate = new Date(dateStr + 'T00:00:00+05:30');
   const dayOfWeek = targetDate.getDay(); // 0 is Sunday
 
   if (dayOfWeek === 0) {
     return {
       available: false,
+      date: dateStr,
       message: 'Sharma Multispeciality Clinic is closed on Sundays. Clinic timings are Monday to Saturday: Morning 10:00 AM to 2:00 PM, and Evening 5:00 PM to 8:00 PM IST.',
       availableSlots: []
     };
@@ -173,8 +266,10 @@ async function checkAvailability(dateStr, preferredTime = null) {
  * Schedule Appointment in Google Calendar and Local Store
  */
 async function scheduleAppointment({ customerName, customerPhone, date, time, purpose, preferredLanguage, notes, patientType }) {
+  const normDate = normalizeDate(date);
+  const normTime = normalizeTime(time) || '11:00';
   const bookingId = 'SMC-' + Date.now().toString(36).toUpperCase();
-  const startDateTime = `${date}T${time}:00+05:30`;
+  const startDateTime = `${normDate}T${normTime}:00+05:30`;
   const startTime = new Date(startDateTime);
   const endTime = new Date(startTime.getTime() + SLOT_DURATION_MINUTES * 60000);
 
@@ -204,8 +299,8 @@ async function scheduleAppointment({ customerName, customerPhone, date, time, pu
     bookingId,
     customerName,
     customerPhone,
-    date,
-    time,
+    date: normDate,
+    time: normTime,
     purpose: purpose || 'General Consultation',
     patientType: patientType || 'New Patient',
     fee: '₹500',
@@ -225,12 +320,12 @@ async function scheduleAppointment({ customerName, customerPhone, date, time, pu
     bookingId,
     customerName,
     customerPhone,
-    date,
-    time,
+    date: normDate,
+    time: normTime,
     purpose: purpose || 'General Consultation',
     doctor: 'Dr. Pankaj Sharma',
     fee: '₹500 (Consultation fee, Pay at clinic via UPI/Cash/Card)',
-    message: `Appointment successfully booked for ${customerName} with Dr. Pankaj Sharma on ${date} at ${time}. Booking ID: ${bookingId}. Consultation fee is ₹500 (Free follow-up within 7 days).`
+    message: `Appointment successfully booked for ${customerName} with Dr. Pankaj Sharma on ${normDate} at ${normTime}. Booking ID: ${bookingId}. Consultation fee is ₹500 (Free follow-up within 7 days).`
   };
 }
 
