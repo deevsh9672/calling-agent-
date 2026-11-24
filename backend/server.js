@@ -329,26 +329,95 @@ function updateVapiWebhook(webhookUrl) {
   getTools.end();
 }
 
-// Resilient Tunnel with Keep-Alive Heartbeat
-let activeTunnel = null;
-async function initTunnel() {
+// Resilient Tunnel (Cloudflare Tunnel with SSH Fallback)
+const { spawn, exec } = require('child_process');
+let activeTunnelProcess = null;
+let activeTunnelUrl = null;
+
+function initTunnel() {
+  const cloudflaredBin = path.join(__dirname, '../cloudflared.exe');
+
+  if (fs.existsSync(cloudflaredBin)) {
+    console.log('[TUNNEL] Starting Cloudflare Quick Tunnel (cloudflared.exe)...');
+    try {
+      if (activeTunnelProcess) {
+        try { activeTunnelProcess.kill(); } catch (e) {}
+      }
+
+      activeTunnelProcess = spawn(cloudflaredBin, ['tunnel', '--url', `http://localhost:${PORT}`]);
+
+      const handleCloudflareOutput = (data) => {
+        const text = data.toString();
+        const match = text.match(/https:\/\/[a-zA-Z0-9-]+\.trycloudflare\.com/);
+        if (match && match[0] && match[0] !== activeTunnelUrl) {
+          activeTunnelUrl = match[0];
+          const fullUrl = `${activeTunnelUrl}/api/vapi/webhook`;
+          console.log(`=================================================`);
+          console.log(`⚡ CLOUDFLARE HIGH-SPEED TUNNEL ESTABLISHED!`);
+          console.log(`🔗 CRM Public URL: ${activeTunnelUrl}/crm`);
+          console.log(`📡 Webhook Endpoint: ${fullUrl}`);
+          console.log(`=================================================`);
+          updateVapiWebhook(fullUrl);
+        }
+      };
+
+      activeTunnelProcess.stderr.on('data', handleCloudflareOutput);
+      activeTunnelProcess.stdout.on('data', handleCloudflareOutput);
+
+      activeTunnelProcess.on('close', (code) => {
+        console.warn(`[TUNNEL] Cloudflare tunnel closed (exit code ${code}). Reconnecting in 3s...`);
+        activeTunnelUrl = null;
+        setTimeout(initTunnel, 3000);
+      });
+
+      activeTunnelProcess.on('error', (err) => {
+        console.error('[TUNNEL] Cloudflare error:', err.message);
+        activeTunnelUrl = null;
+        setTimeout(initTunnel, 3000);
+      });
+      return;
+    } catch (err) {
+      console.error('[TUNNEL] Failed to start cloudflared, falling back to SSH:', err.message);
+    }
+  }
+
+  // Fallback to SSH tunnel if cloudflared is unavailable
+  console.log('[TUNNEL] Establishing secure SSH tunnel via localhost.run...');
   try {
-    console.log('[TUNNEL] Connecting localtunnel...');
-    activeTunnel = await localtunnel({ port: PORT, subdomain: 'bhsoft-voice-webhook' });
-    const fullUrl = `${activeTunnel.url}/api/vapi/webhook`;
-    console.log(`[TUNNEL] Live Public URL: ${activeTunnel.url}`);
-    console.log(`[TUNNEL] Webhook Endpoint: ${fullUrl}`);
+    if (activeTunnelProcess) {
+      try { activeTunnelProcess.kill(); } catch (e) {}
+    }
 
-    updateVapiWebhook(fullUrl);
+    const sshCmd = `ssh -o StrictHostKeyChecking=no -o ServerAliveInterval=20 -o ServerAliveCountMax=3 -R 80:localhost:${PORT} nokey@localhost.run`;
+    activeTunnelProcess = exec(sshCmd);
 
-    activeTunnel.on('close', () => {
-      console.warn('[TUNNEL] Connection closed. Auto-reconnecting in 3s...');
+    const handleOutput = (data) => {
+      const text = data.toString();
+      const match = text.match(/https:\/\/[a-zA-Z0-9-]+\.app\.lhr\.life/);
+      if (match && match[0] && match[0] !== activeTunnelUrl) {
+        activeTunnelUrl = match[0];
+        const fullUrl = `${activeTunnelUrl}/api/vapi/webhook`;
+        console.log(`=================================================`);
+        console.log(`🌐 LIVE PUBLIC TUNNEL ESTABLISHED!`);
+        console.log(`🔗 CRM Public URL: ${activeTunnelUrl}/crm`);
+        console.log(`📡 Webhook Endpoint: ${fullUrl}`);
+        console.log(`=================================================`);
+        updateVapiWebhook(fullUrl);
+      }
+    };
+
+    activeTunnelProcess.stdout.on('data', handleOutput);
+    activeTunnelProcess.stderr.on('data', handleOutput);
+
+    activeTunnelProcess.on('close', (code) => {
+      console.warn(`[TUNNEL] SSH tunnel closed (exit code ${code}). Reconnecting in 3 seconds...`);
+      activeTunnelUrl = null;
       setTimeout(initTunnel, 3000);
     });
 
-    activeTunnel.on('error', (err) => {
-      console.error('[TUNNEL] Error:', err.message);
-      try { activeTunnel.close(); } catch (e) {}
+    activeTunnelProcess.on('error', (err) => {
+      console.error('[TUNNEL] SSH Error:', err.message);
+      activeTunnelUrl = null;
       setTimeout(initTunnel, 3000);
     });
   } catch (err) {
@@ -356,15 +425,6 @@ async function initTunnel() {
     setTimeout(initTunnel, 5000);
   }
 }
-
-// Keep-alive heartbeat ping every 25 seconds
-setInterval(() => {
-  if (activeTunnel && activeTunnel.url) {
-    https.get(`${activeTunnel.url}/api/health`, { headers: { 'Bypass-Tunnel-Reminder': 'true' } }, (res) => {
-      res.on('data', () => {});
-    }).on('error', () => {});
-  }
-}, 25000);
 
 app.listen(PORT, () => {
   console.log(`=================================================`);
